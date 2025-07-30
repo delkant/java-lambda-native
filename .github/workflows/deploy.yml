@@ -5,20 +5,20 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Set up JDK 21
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: 21
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          version: '21'
+          distribution: 'graalvm-community'
+          java-version: '21'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build native image
-      run: ./mvnw -Pnative clean package
+      - name: Build native image
+        run: mvn -Pnative native:compile
 
-    - name: Deploy to AWS Lambda
-      run: echo "Simulate AWS Lambda deployment here"
+      - name: Deploy to AWS Lambda
+        run: echo "Simulate AWS Lambda deployment here"
