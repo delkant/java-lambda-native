@@ -22,7 +22,22 @@ jobs:
 
     - name: Build native image
       run: mvn clean package native:compile
-
+    - name: Create Lambda function (if not exists)
+      run: |
+        aws lambda get-function --function-name person-crud-prod || \
+        aws lambda create-function \
+          --function-name person-crud-prod \
+          --runtime provided.al2 \
+          --handler not.used.in.native.image \
+          --role arn:aws:iam::905418179757:role/lambda-basic-execution-role \
+          --zip-file fileb://./target/spring-cloud-native \
+          --architectures arm64 \
+          --memory-size 512 \
+          --timeout 30
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: us-east-1
     - name: Deploy to AWS Lambda
       uses: appleboy/lambda-action@master
       with:
