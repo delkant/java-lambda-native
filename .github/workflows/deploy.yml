@@ -20,7 +20,7 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build native image
-      run: mvn -Pnative native:compile-no-fork
+      run: mvn clean package native:compile
 
     - name: Deploy to AWS Lambda
       uses: appleboy/lambda-action@master
