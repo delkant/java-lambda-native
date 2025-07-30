@@ -11,6 +11,7 @@ import java.util.function.Function;
 
 @SpringBootApplication
 public class FunctionConfiguration {
+
     public static void main(String[] args) {
         SpringApplication.run(FunctionConfiguration.class, args);
     }
