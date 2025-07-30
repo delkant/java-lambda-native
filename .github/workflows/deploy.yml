@@ -50,3 +50,32 @@ jobs:
         aws_region: us-east-1
         function_name: person-crud-prod
         zip_file: ./target/function.zip
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Install AWS SAM CLI
+      run: |
+        pip install aws-sam-cli
+    - name: Ensure S3 bucket exists
+      run: |
+        aws s3api head-bucket --bucket ${{ secrets.S3_DEPLOY_BUCKET }} 2>/dev/null || \
+        aws s3api create-bucket \
+          --bucket ${{ secrets.S3_DEPLOY_BUCKET }} \
+          --region us-east-1
+    - name: Package SAM template
+      run: |
+        sam package \
+          --template-file template.yaml \
+          --output-template-file packaged.yaml \
+          --s3-bucket ${{ secrets.S3_DEPLOY_BUCKET }}
+    - name: Deploy SAM template
+      run: |
+        sam deploy \
+          --template-file packaged.yaml \
+          --stack-name person-crud-stack \
+          --capabilities CAPABILITY_IAM \
+          --region us-east-1
