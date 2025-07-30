@@ -75,7 +75,8 @@ jobs:
         sam package \
           --template-file template.yaml \
           --output-template-file packaged.yaml \
-          --s3-bucket ${{ secrets.S3_DEPLOY_BUCKET }}
+          --s3-bucket ${{ secrets.S3_DEPLOY_BUCKET }} \
+          --region us-east-1
     - name: Deploy SAM template
       run: |
         sam deploy \
