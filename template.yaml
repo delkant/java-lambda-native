@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Spring Cloud Function CRUD Lambda
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+
+Resources:
+  PersonFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: person-crud-lambda
+      Handler: org.springframework.cloud.function.adapter.aws.FunctionInvoker::handleRequest
+      Runtime: provided.al2
+      CodeUri: target/
+      AutoPublishAlias: live
+      Architectures:
+        - arm64
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /person
+            Method: post
+        GetEvent:
+          Type: Api
+          Properties:
+            Path: /person/{id}
+            Method: get
+        DeleteEvent:
+          Type: Api
+          Properties:
+            Path: /person/{id}
+            Method: delete

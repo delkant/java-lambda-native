@@ -1,0 +1,15 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto21
+    commands:
+      - echo Installing GraalVM native image toolchain
+  build:
+    commands:
+      - mvn -Pnative native:compile-no-fork
+      - mkdir -p target/
+artifacts:
+  files:
+    - target/**
