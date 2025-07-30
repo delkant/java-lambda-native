@@ -22,6 +22,10 @@ jobs:
 
     - name: Build native image
       run: mvn clean package native:compile
+    - name: Package Lambda ZIP
+      run: |
+        cd target
+        zip -r function.zip spring-cloud-native
     - name: Create Lambda function (if not exists)
       run: |
         aws lambda get-function --function-name person-crud-prod || \
@@ -30,7 +34,7 @@ jobs:
           --runtime provided.al2 \
           --handler not.used.in.native.image \
           --role arn:aws:iam::905418179757:role/lambda-basic-execution-role \
-          --zip-file fileb://./target/spring-cloud-native \
+          --zip-file fileb://target/function.zip \
           --architectures arm64 \
           --memory-size 512 \
           --timeout 30
@@ -45,4 +49,4 @@ jobs:
         aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws_region: us-east-1
         function_name: person-crud-prod
-        zip_file: ./target/spring-cloud-native
+        zip_file: ./target/function.zip
