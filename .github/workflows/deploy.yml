@@ -25,7 +25,21 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build native image
-        run: mvn clean package native:compile
+        run: |
+          mvn clean package
+              native-image \
+                --no-fallback \
+                --static \
+                --libc=musl \
+                --enable-url-protocols=http,https \
+                -H:Name=spring-cloud-native \
+                -H:Class=com.example.person.FunctionConfiguration \
+                -H:+ReportExceptionStackTraces \
+                -H:+PrintAnalysisCallTree \
+                --verbose \
+                --initialize-at-build-time \
+                --native-image-info \
+                --target=arm64-linux
 
       - name: Create bootstrap file and package ZIP
         run: |
