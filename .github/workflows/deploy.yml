@@ -9,9 +9,10 @@ env:
   AWS_REGION: us-east-1
 
 jobs:
-  build-lambda:
+  build:
+    name: Build native image
     runs-on: ubuntu-latest
-    name: Build native image and prepare artifacts
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -26,33 +27,33 @@ jobs:
       - name: Build native image
         run: mvn clean package native:compile
 
-      - name: Create bootstrap file
+      - name: Create bootstrap file and package ZIP
         run: |
           echo '#!/bin/sh' > bootstrap
           echo './spring-cloud-native' >> bootstrap
           chmod +x bootstrap
           mv bootstrap target/
-
-      - name: Package Lambda ZIP
-        run: |
           cd target
           zip function.zip spring-cloud-native bootstrap
 
-      - name: Upload build artifacts for later steps
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: lambda-artifacts
           path: |
-            target/
+            target/function.zip
+            target/bootstrap
+            target/spring-cloud-native
             template.yaml
 
-  deploy-sam:
-    runs-on: ubuntu-latest
+  deploy:
     name: Deploy Lambda and API Gateway
-    needs: build-lambda
+    runs-on: ubuntu-latest
+    needs: build
     environment: prod
+
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Download build artifacts
@@ -67,28 +68,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install AWS SAM CLI
+      - name: Install SAM CLI
         run: pip install aws-sam-cli
 
       - name: Ensure S3 bucket exists
         run: |
           aws s3api head-bucket --bucket ${{ secrets.S3_DEPLOY_BUCKET }} 2>/dev/null || \
-          aws s3api create-bucket \
-            --bucket ${{ secrets.S3_DEPLOY_BUCKET }} \
-            --region ${{ env.AWS_REGION }}
+          aws s3api create-bucket --bucket ${{ secrets.S3_DEPLOY_BUCKET }} --region ${{ env.AWS_REGION }}
 
       - name: Package SAM template
         run: |
           sam package \
             --template-file template.yaml \
             --output-template-file packaged.yaml \
-            --s3-bucket ${{ secrets.S3_DEPLOY_BUCKET }} \
-            --region ${{ env.AWS_REGION }}
+            --s3-bucket ${{ secrets.S3_DEPLOY_BUCKET }}
 
       - name: Deploy SAM template
         run: |
           sam deploy \
             --template-file packaged.yaml \
             --stack-name person-crud-stack \
-            --capabilities CAPABILITY_IAM \
-            --region ${{ env.AWS_REGION }}
+            --capabilities CAPABILITY_IAM
