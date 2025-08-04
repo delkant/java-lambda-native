@@ -97,8 +97,14 @@
                 <artifactId>native-maven-plugin</artifactId>
                 <version>0.10.2</version>
                 <configuration>
+                    <imageName>spring-cloud-native</imageName>
                     <mainClass>com.example.person.FunctionConfiguration</mainClass>
-                    <!-- replace with your actual fully qualified main class -->
+                    <buildArgs>
+                        <buildArg>--no-fallback</buildArg>
+                        <buildArg>--verbose</buildArg>
+                        <buildArg>--initialize-at-build-time</buildArg>
+                        <buildArg>--native-image-info</buildArg>
+                    </buildArgs>
                 </configuration>
                 <executions>
                     <execution>
