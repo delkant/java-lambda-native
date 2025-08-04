@@ -11,6 +11,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/graalvm/native-image:ol8-java21
     name: Build native binary
     steps:
       - name: Checkout code
