@@ -97,19 +97,14 @@
                 <artifactId>native-maven-plugin</artifactId>
                 <version>0.10.2</version>
                 <configuration>
-                    <mainClass>com.example.person.FunctionConfiguration</mainClass>
                     <imageName>spring-cloud-native</imageName>
+                    <mainClass>com.example.person.FunctionConfiguration</mainClass>
                     <buildArgs>
-                        <!-- Statically linked binary for Lambda -->
+                        <buildArg>--no-fallback</buildArg>
                         <buildArg>--static</buildArg>
                         <buildArg>--libc=musl</buildArg>
-
-                        <!-- Set target platform to ARM64 Linux -->
-                        <buildArg>--target=arm64-linux</buildArg>
-
-                        <!-- Optional: extra flags for better insight or compatibility -->
-                        <buildArg>--no-fallback</buildArg>
                         <buildArg>--verbose</buildArg>
+                        <buildArg>--initialize-at-build-time</buildArg>
                         <buildArg>--native-image-info</buildArg>
                     </buildArgs>
                 </configuration>
