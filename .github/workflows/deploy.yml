@@ -1,4 +1,4 @@
-name: Build and Deploy to AWS Lambda with SAM
+name: Build and Deploy Native Lambda with SAM
 
 on:
   push:
@@ -10,9 +10,8 @@ env:
 
 jobs:
   build:
-    name: Build native image
     runs-on: ubuntu-latest
-
+    name: Build native image
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -24,29 +23,22 @@ jobs:
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build native image
+      - name: Install Native Image and tools
         run: |
-          mvn clean package
-              native-image \
-                --no-fallback \
-                --static \
-                --libc=musl \
-                --enable-url-protocols=http,https \
-                -H:Name=spring-cloud-native \
-                -H:Class=com.example.person.FunctionConfiguration \
-                -H:+ReportExceptionStackTraces \
-                -H:+PrintAnalysisCallTree \
-                --verbose \
-                --initialize-at-build-time \
-                --native-image-info \
-                --target=arm64-linux
+          gu install native-image
+          sudo apt-get update && sudo apt-get install -y musl-tools zlib1g-dev
 
-      - name: Create bootstrap file and package ZIP
+      - name: Build native image with Maven
+        run: mvn clean package -Pnative
+
+      - name: Verify binary is ARM64
+        run: file target/spring-cloud-native
+
+      - name: Create bootstrap file and zip
         run: |
-          echo '#!/bin/sh' > bootstrap
-          echo './spring-cloud-native' >> bootstrap
-          chmod +x bootstrap
-          mv bootstrap target/
+          echo '#!/bin/sh' > target/bootstrap
+          echo './spring-cloud-native' >> target/bootstrap
+          chmod +x target/bootstrap
           cd target
           zip function.zip spring-cloud-native bootstrap
 
@@ -56,21 +48,17 @@ jobs:
           name: lambda-artifacts
           path: |
             target/function.zip
-            target/bootstrap
-            target/spring-cloud-native
             template.yaml
 
   deploy:
-    name: Deploy Lambda and API Gateway
     runs-on: ubuntu-latest
     needs: build
     environment: prod
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download build artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: lambda-artifacts
@@ -82,13 +70,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install SAM CLI
+      - name: Install AWS SAM CLI
         run: pip install aws-sam-cli
 
       - name: Ensure S3 bucket exists
         run: |
           aws s3api head-bucket --bucket ${{ secrets.S3_DEPLOY_BUCKET }} 2>/dev/null || \
-          aws s3api create-bucket --bucket ${{ secrets.S3_DEPLOY_BUCKET }} --region ${{ env.AWS_REGION }}
+          aws s3api create-bucket \
+            --bucket ${{ secrets.S3_DEPLOY_BUCKET }} \
+            --region ${{ env.AWS_REGION }}
 
       - name: Package SAM template
         run: |
@@ -97,7 +87,7 @@ jobs:
             --output-template-file packaged.yaml \
             --s3-bucket ${{ secrets.S3_DEPLOY_BUCKET }}
 
-      - name: Deploy SAM template
+      - name: Deploy with SAM
         run: |
           sam deploy \
             --template-file packaged.yaml \
