@@ -1,59 +1,53 @@
-name: Build and Deploy Native Spring Lambda
+name: Build and Deploy Native Lambda
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 env:
   AWS_REGION: us-east-1
+  STACK_NAME: person-crud-stack
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/graalvm/native-image:ol8-java21
-    name: Build native binary
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up GraalVM
+      - name: Set up GraalVM with native-image
         uses: graalvm/setup-graalvm@v1
         with:
           java-version: '21'
           distribution: 'graalvm'
+          components: native-image
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Native Image
-        run: gu install native-image
-
       - name: Build native image
-        run: mvn clean package
+        run: mvn clean package -DskipTests
 
-      - name: Create bootstrap + zip
+      - name: Create bootstrap and zip
         run: |
-          echo '#!/bin/sh' > bootstrap
-          echo './spring-cloud-native' >> bootstrap
+          cp target/spring-cloud-native bootstrap
           chmod +x bootstrap
-          mv bootstrap target/
-          cd target
-          zip function.zip spring-cloud-native bootstrap
+          zip function.zip bootstrap
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: lambda-artifacts
           path: |
-            target/function.zip
+            function.zip
             template.yaml
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    name: Deploy via SAM
+    environment: prod
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Download artifacts
@@ -61,34 +55,35 @@ jobs:
         with:
           name: lambda-artifacts
 
-      - name: Set up AWS credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install SAM CLI
-        run: pip install aws-sam-cli
-
-      - name: Ensure deploy bucket exists
+      - name: Ensure S3 bucket exists
         run: |
           aws s3api head-bucket --bucket ${{ secrets.S3_DEPLOY_BUCKET }} 2>/dev/null || \
           aws s3api create-bucket \
             --bucket ${{ secrets.S3_DEPLOY_BUCKET }} \
             --region ${{ env.AWS_REGION }}
 
+      - name: Install SAM CLI
+        run: pip install aws-sam-cli
+
       - name: Package SAM template
         run: |
           sam package \
             --template-file template.yaml \
             --output-template-file packaged.yaml \
-            --s3-bucket ${{ secrets.S3_DEPLOY_BUCKET }}
+            --s3-bucket ${{ secrets.S3_DEPLOY_BUCKET }} \
+            --region ${{ env.AWS_REGION }}
 
-      - name: Deploy SAM template
+      - name: Deploy Lambda with SAM
         run: |
           sam deploy \
             --template-file packaged.yaml \
-            --stack-name person-crud-stack \
+            --stack-name ${{ env.STACK_NAME }} \
             --capabilities CAPABILITY_IAM \
             --region ${{ env.AWS_REGION }}
