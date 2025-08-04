@@ -101,8 +101,6 @@
                     <mainClass>com.example.person.FunctionConfiguration</mainClass>
                     <buildArgs>
                         <buildArg>--no-fallback</buildArg>
-                        <buildArg>--static</buildArg>
-                        <buildArg>--libc=musl</buildArg>
                         <buildArg>--verbose</buildArg>
                         <buildArg>--initialize-at-build-time</buildArg>
                         <buildArg>--native-image-info</buildArg>
